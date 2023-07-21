@@ -1,0 +1,213 @@
+esphome:
+  name: lcd-2410b-sht
+  friendly_name: lcd-2410b-sht
+
+substitutions:
+  device_name: lcd-2410b-sht
+
+esp8266:
+  board: d1_mini
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+  password: !secret ota_password
+  
+wifi:
+  ssid: !secret my_ap_ssid
+  password: !secret my_ap_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "lcd-2410b-sht"
+    password: "12345678"
+
+#web_server:
+
+captive_portal:
+
+spi:
+  clk_pin: D5
+  mosi_pin: D7
+
+i2c:
+  sda: D3
+  scl: D4
+  scan: true
+
+sensor:
+      
+  - platform: wifi_signal
+    id: wifisignal
+    name: "${device_name} WiFi Signal"
+    update_interval: 60s
+
+  - platform: sht3xd
+    address: 0x44  
+    update_interval: 30s  
+    temperature:
+      name: "${device_name} Temperature"
+      id: temp_data
+
+
+    humidity:
+      name: "${device_name} Humidity"
+      id: hum_data  
+
+    
+switch:
+  - platform: gpio
+    name: "${device_name} LCD light"
+    pin: D8
+    restore_mode: RESTORE_DEFAULT_ON
+    id: lcd_switch
+
+text_sensor:
+  - platform: homeassistant
+    id: current_time   
+    entity_id: sensor.time  
+
+
+
+binary_sensor:
+  - platform: status
+    name: "${device_name} Status"
+    id: system_status
+
+  - platform: gpio
+    id: motion
+    pin: D2
+    name: "${device_name} Motion"
+    device_class: motion    
+    filters:
+      - delayed_off: 1s
+    on_state:
+      if:
+        condition:
+          binary_sensor.is_on: motion
+        then:
+          switch.turn_on: lcd_switch
+        else:
+          switch.turn_off: lcd_switch
+    
+font:
+  - file: "fonts/Roboto-Medium.ttf"
+    id: my_font
+    size: 30
+    glyphs:    
+      ['!', ',', '.', '"', '%', '-', '_', ':', '°', '/',
+       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ',
+       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K',
+       'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 
+       'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
+       'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
+       's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+       
+  - file: "fonts/Roboto-Medium.ttf"
+    id: font_small
+    size: 20
+    glyphs:
+      ['!', ',', '.', '"', '%', '-', '_', ':', '°', '/',
+       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ',
+       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K',
+       'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 
+       'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
+       'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
+       's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+    
+  - file: "fonts/Roboto-Medium.ttf"
+    id: time_font
+    size: 55
+    glyphs: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, ':']
+    
+  - file: "fonts/materialdesignicons-7296.ttf"
+    id: icon_medium
+    size: 30
+    glyphs: 
+      - "\U000F0F92" # mdi-water-boiler
+      - "\U000F01AB" # mdi-cup-water       
+
+  - file: "fonts/materialdesignicons-7296.ttf"
+    id: icon_big
+    size: 35
+    glyphs: 
+      - "\U000F058E" # mdi-water-percent
+      - "\U000F050F" # mdi-thermometer
+    
+
+color:
+  - id: my_red
+    red: 100%
+    green: 0%
+    blue: 0%
+    
+  - id: my_yellow
+    red: 100%
+    green: 100%
+    blue: 0%
+    
+  - id: my_green
+    hex: 16FF00
+    
+  - id: clock_color
+    hex: FFED00
+
+  - id: icon_color
+    hex: FF6D28 
+  
+  - id: text_color
+    hex: FF6000
+
+  - id: my_blue
+    hex: 6699FF
+    
+display:
+  - platform: st7735
+    model: "INITR_BLACKTAB"
+    cs_pin: D0
+    dc_pin: D6
+    rotation: 90
+    device_width: 130
+    device_height: 162
+    col_start: 0
+    row_start: 0
+    eight_bit_color: true
+    update_interval: 5s
+    id: my_display
+    pages:
+      - id: p1
+        lambda: |-
+          int x,y;
+          it.rectangle(1, 0, 160, 128); //frame            
+          //it.printf(15,-3, id(time_font),id(clock_color), "22:59");
+          it.printf(15,-3, id(time_font),id(clock_color), "%s", id(current_time).state.c_str());
+          it.filled_rectangle(0, 55, 162, 1);
+
+          it.print(5, 57, id(icon_big),id(my_blue), "\U000F050F"); //temp icon               
+          //it.printf(40, 55, id(my_font),id(my_green), "25.9°C"); //temp text     
+          if (id(temp_data).state < 25) {
+            it.printf(40,55, id(my_font),id(my_green), "%.1f°C", id(temp_data).state);
+          }
+          else if (id(temp_data).state < 30)  {
+            it.printf(40,55, id(my_font),id(my_yellow), "%.1f°C", id(temp_data).state);
+          }
+          else {
+            it.printf(40,55, id(my_font),id(my_red), "%.1f°C", id(temp_data).state);
+          }
+          
+          it.print(25,  95, id(icon_big),id(my_blue), "\U000F058E"); //humi icon
+          //it.printf(60, 93, id(my_font),id(my_green), "57.9%%"); //humi text
+          if (id(hum_data).state < 45) {
+            it.printf(60,93, id(my_font),id(my_yellow),"%.1f%%", id(hum_data).state);
+          }
+          else if (id(hum_data).state < 65)  {
+            it.printf(60,93, id(my_font),id(my_green),"%.1f%%", id(hum_data).state);
+          }
+          else {
+            it.printf(60,93, id(my_font),id(my_red), "%.1f%%", id(hum_data).state);
+          }          
+
