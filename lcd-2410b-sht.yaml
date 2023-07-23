@@ -58,6 +58,24 @@ sensor:
       name: "${device_name} Humidity"
       id: hum_data  
 
+  #以下是來自HA的sensor，請自行修改成自己想要顯示的sensor實體id
+  - platform: homeassistant
+    entity_id: sensor.water_purifier_pp_filter_level
+    id: pp_filter
+
+  - platform: homeassistant
+    entity_id: sensor.water_purifier_ro_filter_level
+    id: ro_filter
+
+  - platform: homeassistant
+    entity_id: sensor.water_purifier_input_water_tds
+    id: tds_in
+
+  - platform: homeassistant
+    entity_id: sensor.water_purifier_output_water_tds
+    id: tds_out
+
+
     
 switch:
   - platform: gpio
@@ -66,10 +84,32 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     id: lcd_switch
 
-text_sensor:
-  - platform: homeassistant
-    id: current_time   
-    entity_id: sensor.time  
+
+#時間顯示用
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Asia/Taipei
+
+#以下是按鈕，按下後可顯示Page 1或Page 2
+button:
+  - platform: template
+    name: '${device_name} Show Time Page'
+    icon: 'mdi:update'
+    on_press:
+      then:
+        - display.page.show: p1
+        - component.update: my_display
+    internal: false
+
+  - platform: template
+    name: '${device_name} Show Water Page'
+    icon: 'mdi:update'
+    on_press:
+      then:
+        - display.page.show: p2
+        - component.update: my_display
+    internal: false 
 
 
 
@@ -88,6 +128,7 @@ binary_sensor:
     on_state:
       if:
         condition:
+
           binary_sensor.is_on: motion
         then:
           switch.turn_on: lcd_switch
@@ -183,8 +224,8 @@ display:
         lambda: |-
           int x,y;
           it.rectangle(1, 0, 160, 128); //frame            
-          //it.printf(15,-3, id(time_font),id(clock_color), "22:59");
-          it.printf(15,-3, id(time_font),id(clock_color), "%s", id(current_time).state.c_str());
+          it.strftime(15,-3, id(time_font),id(clock_color), "%H:%M", id(sntp_time).now());
+          //it.printf(15,-3, id(time_font),id(clock_color), "%s", id(current_time).state.c_str());
           it.filled_rectangle(0, 55, 162, 1);
 
           it.print(5, 57, id(icon_big),id(my_blue), "\U000F050F"); //temp icon               
@@ -210,4 +251,50 @@ display:
           else {
             it.printf(60,93, id(my_font),id(my_red), "%.1f%%", id(hum_data).state);
           }          
+
+        #第二頁的內容，主要顯示來自HA的四個sensor實體
+      - id: p2
+        lambda: |-
+          int x,y;
+
+          it.rectangle(1, 0, 160, 128); //frame
+
+          y=5;
+          it.print(0, y-4, id(icon_medium),id(my_blue), "\U000F0F92"); //filter icon
+          it.printf(30,y, id(font_small),id(my_blue), "Filter");
+
+          it.filled_rectangle(86, 0, 1, 130);
+
+          it.print(88, y-4, id(icon_medium),id(my_blue), "\U000F01AB"); //TDS icon
+          it.printf(118,y, id(font_small),id(my_blue), "TDS");
+          
+          it.filled_rectangle(0, 30, 162, 1);
+          
+          y=30;            
+          it.printf(3, y, id(font_small),id(icon_color), "PP:"); 
+          if (id(pp_filter).state >80) {
+            it.printf(8, y+17, id(my_font),id(my_green), "%.0f%%",id(pp_filter).state); //PP
+          }else if (id(pp_filter).state >40) {
+            it.printf(8, y+17, id(my_font),id(my_yellow), "%.0f%%",id(pp_filter).state);
+          }else{
+            it.printf(8, y+17, id(my_font),id(my_red), "%.0f%%",id(pp_filter).state);
+          }
+
+          it.printf(90, y, id(font_small),id(icon_color), "IN:"); 
+          it.printf(95, y+17, id(my_font),id(my_green), "%.0f",id(tds_in).state); //TDS IN         
+          
+          it.filled_rectangle(0, 78, 162, 1);
+
+          y=78;
+          it.printf(3, y, id(font_small),id(icon_color), "RO:"); 
+          if (id(ro_filter).state >80) {
+            it.printf(8, y+18, id(my_font),id(my_green), "%.0f%%",id(ro_filter).state); //RO
+          }else if (id(ro_filter).state >40) {
+            it.printf(8, y+18, id(my_font),id(my_yellow), "%.0f%%",id(ro_filter).state);
+          }else{
+            it.printf(8, y+18, id(my_font),id(my_red), "%.0f%%",id(ro_filter).state);
+          }          
+
+          it.printf(90, y, id(font_small),id(icon_color), "OUT:"); 
+          it.printf(105, y+18, id(my_font),id(my_green),  "%.0f",id(tds_out).state); //TDS OUT
 
