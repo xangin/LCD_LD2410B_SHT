@@ -52,12 +52,34 @@ sensor:
     temperature:
       name: "${device_name} Temperature"
       id: temp_data
-
+      filters:
+        # 因D1 mini很熱會影響到感測器判讀，所以要加校正
+        # 左邊填感測器量到的，右邊填對照組的數值
+        # 建議取低中高來校正比較準確
+        - calibrate_polynomial:
+            degree: 2
+            datapoints:              
+              - 0.0 -> 0.0    
+              - 35.7 -> 28.89
+              - 35.9 -> 29.15
+              - 37.1 -> 30.03
 
     humidity:
       name: "${device_name} Humidity"
       id: hum_data  
-
+      filters:
+        # 因D1 mini很熱會影響到感測器判讀，所以要加校正
+        # 左邊填感測器量到的，右邊填對照組的數值
+        # 建議取低中高來校正比較準確      
+        - calibrate_polynomial:
+            degree: 2
+            datapoints:
+              - 0.0 -> 0.0
+              - 35.1 -> 57.91
+              - 43.6 -> 62.78
+              - 46.4 -> 64.84
+              - 47.7 -> 70.04 
+              
   #以下是來自HA的sensor，請自行修改成自己想要顯示的sensor實體id
   - platform: homeassistant
     entity_id: sensor.water_purifier_pp_filter_level
